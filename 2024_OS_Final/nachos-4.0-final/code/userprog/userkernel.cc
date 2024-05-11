@@ -25,18 +25,25 @@ UserProgKernel::UserProgKernel(int argc, char** argv) : ThreadedKernel(argc, arg
     for (int i = 0; i < NumPhysPages; i++)
         PhysicalPageUsed[NumPhysPages] = FALSE;
     execfileNum = 0;
+    threadNum = 0;    // shihtl> 感覺不加會出事，先加著保險
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-s") == 0) {
             debugUserProg = TRUE;
         } else if (strcmp(argv[i], "-e") == 0) {
             execfile[++execfileNum] = argv[++i];
         }
-        //<TODO>
+        // <TODO> Done
         // Get execfile & its priority & burst time from argv, then save them.
+        // shihtl> 這邊實作參考上面 "-e" 的邏輯
         else if (strcmp(argv[i], "-epb") == 0) {
+            execfile[++execfileNum] = argv[++i];
+            threadPriority[execfileNum] = atoi(argv[++i]);
+            threadRemainingBurstTime[execfileNum] = atoi(argv[++i]);
 
+            // shihtl> for debug
+            DEBUG(dbgMLFQ, "########" << execfile[execfileNum] << "  " << threadPriority[execfileNum] << "  " << threadRemainingBurstTime[execfileNum]);
         }
-        //<TODO>
+        //<TODO> Done
         else if (strcmp(argv[i], "-u") == 0) {
             cout << "===========The following argument is defined in userkernel.cc" << endl;
             cout << "Partial usage: nachos [-s]\n";
@@ -64,7 +71,8 @@ void UserProgKernel::Initialize() {
     machine = new Machine(debugUserProg);
     fileSystem = new FileSystem();
 
-
+    // shihtl> main thread，一開始調用這個，然後 fork 出所有要做的 tasks 到個別的 thread，所以之後會在 InitializeAllThreads 把它殺掉
+    // shihtl> 然後 main thread 是直接開始執行，不會先 ReadyToRun() 才撈出來執行
     currentThread = new Thread("main", threadNum++);
     synchConsoleIn = new SynchConsoleInput(consoleIn);
     synchConsoleOut = new SynchConsoleOutput(consoleOut);
@@ -164,6 +172,10 @@ void ForkExecute(Thread* t) {
     //<TODO>
     // When Thread t goes to Running state in the first time, its file should be loaded & executed.
     // Hint: This function would not be called until Thread t is on running state.
+
+    // DEBUG(dbgMLFQ, "$$$$$$$$$$$$$ 有運行在 thread " << t->getID());
+    t->space->Load(t->getName());
+    t->space->Execute(t->getName());
     //<TODO>
 }
 
@@ -171,6 +183,12 @@ int UserProgKernel::InitializeOneThread(char* name, int priority, int burst_time
     //<TODO>
     // When each execfile comes to Exec function, Kernel helps to create a thread for it.
     // While creating a new thread, thread should be initialized, and then forked.
+    t[threadNum] = new Thread(name, threadNum);
+    t[threadNum]->setPriority(priority);
+    t[threadNum]->setWaitTime(0);
+    t[threadNum]->setRemainingBurstTime(burst_time);
+    t[threadNum]->setRunTime(0);
+    t[threadNum]->setRRTime(0);
     t[threadNum]->space = new AddrSpace();
     t[threadNum]->Fork((VoidFunctionPtr)&ForkExecute, (void*)t[threadNum]);
     //<TODO>

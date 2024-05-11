@@ -32,14 +32,18 @@ class UserProgKernel : public ThreadedKernel {
 
     void SelfTest();    // test whether kernel is working
 
-    //<REPORT>
+    //<REPORT> Done
+    // shihtl> 1-1: 初始化所有在 `exefile` 裡面的 threads
     void InitializeAllThreads();
 
+    // shihtl> 我猜 synchConsoleIn/Out 可以不用寫 comment
     SynchConsoleInput* synchConsoleIn;
+    // shihtl> 底層調用 `sprintf` 把 int 變成 char *，然後讓輸出 interrupt 去排隊輸出到 console
     SynchConsoleOutput* synchConsoleOut;
 
+    // shihtl> 將對應的 thread 初始化
     int InitializeOneThread(char* name, int priority, int burst_time);
-    //<REPORT>
+    //<REPORT> Done
 
 
     bool PhysicalPageUsed[NumPhysPages];
@@ -68,14 +72,18 @@ class UserProgKernel : public ThreadedKernel {
     Thread* t[30];
     char* execfile[30];
 
-    //<REPORT>
+    //<REPORT> Done
+    // shihtl> 各 index 的 thread 對應的 priority
     int threadPriority[30];
+    // shihtl> 各 index 的 thread 對應剩下的 burst_time
     int threadRemainingBurstTime[30];
 
+    // shihtl> 總共有多少 thread，在這份作業裡面基本上會跟 execfileNum 一樣
     int threadNum;
 
+    // shihtl> 總共有多少要呼叫的 file
     int execfileNum;
-    //<REPORT>
+    //<REPORT> Done
     char* consoleIn;
     char* consoleOut;
 };

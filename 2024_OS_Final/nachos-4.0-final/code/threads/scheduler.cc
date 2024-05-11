@@ -21,6 +21,7 @@
 #include "copyright.h"
 #include "debug.h"
 #include "scheduler.h"
+#include "list.h"    // shihtl> 不知道實際執行時會不會循環引入，但不加 vscode 抓不到 QQ
 #include "main.h"
 
 //----------------------------------------------------------------------
@@ -29,18 +30,34 @@
 //	Initially, no ready threads.
 //----------------------------------------------------------------------
 
+// shihtl> NOTE: 放東西到 queue 裡面都是 push back，拿東西都是 remove front
 
-//<TODO>
+//<TODO> Done
 // Declare sorting rule of SortedList for L1 & L2 ReadyQueue
 // Hint: Funtion Type should be "static int"
-//<TODO>
+static int cmpL1(Thread* x, Thread* y) {
+    // shihtl> L1 是 preemptive remaining time first
+    if (x->getRemainingBurstTime() < y->getRemainingBurstTime()) return -1;
+    else return 1;
+}
+
+static int cmpL2(Thread* x, Thread* y) {
+    // shihtl> L2 是 FCFS，看 threadID 決定順序，越少越優先執行
+    if (x->getID() < y->getID()) return -1;
+    // shihtl> thread id 不可能相等，則 else 是指 x->getID() > y->getID()
+    else return 1;
+}
+//<TODO> Done
 
 Scheduler::Scheduler() {
     //	schedulerType = type;
     // readyList = new List<Thread *>;
-    //<TODO>
+    //<TODO> Done
     // Initialize L1, L2, L3 ReadyQueue
-    //<TODO>
+    L1ReadyQueue = new SortedList<Thread*>(cmpL1);
+    L2ReadyQueue = new SortedList<Thread*>(cmpL2);
+    L3ReadyQueue = new List<Thread*>();
+    //<TODO> Done
     toBeDestroyed = NULL;
 }
 
@@ -50,9 +67,12 @@ Scheduler::Scheduler() {
 //----------------------------------------------------------------------
 
 Scheduler::~Scheduler() {
-    //<TODO>
+    //<TODO> Done
     // Remove L1, L2, L3 ReadyQueue
-    //<TODO>
+    delete L1ReadyQueue;
+    delete L2ReadyQueue;
+    delete L3ReadyQueue;
+    //<TODO> Done
     // delete readyList;
 }
 
@@ -69,12 +89,39 @@ void Scheduler::ReadyToRun(Thread* thread) {
     // DEBUG(dbgThread, "Putting thread on ready list: " << thread->getName());
 
     Statistics* stats = kernel->stats;
-    //<TODO>
+    //<TODO> Done 大概啦
     // According to priority of Thread, put them into corresponding ReadyQueue.
     // After inserting Thread into ReadyQueue, don't forget to reset some values.
+    // TODO
+    // shihtl> 到底是需要 reset 哪些東西QQ
     // Hint: L1 ReadyQueue is preemptive SRTN(Shortest Remaining Time Next).
     // When putting a new thread into L1 ReadyQueue, you need to check whether preemption or not.
-    //<TODO>
+    // shihtl> Note that insert to a SortedList will insert an item onto the list in sorted order.
+
+    int levelInsert = 0;
+    thread->setStatus(READY);
+
+    if (thread->getPriority() >= 100) {    // shihtl> L1 ReadyQueue
+        levelInsert = 1;
+        if (thread->getRemainingBurstTime() < kernel->currentThread->getRemainingBurstTime()) {    // shihtl> preemption occur
+            // kernel->currentThread->setStatus(READY);
+            // L1ReadyQueue->Insert(kernel->currentThread);
+            // Run(thread, false);    // shihtl > 搶到了開始跑，但還沒跑完
+            kernel->currentThread->Yield();    // shihtl> 後來發現有 Yeild 可以用
+        } else {                               // shihtl> 沒搶到
+            L1ReadyQueue->Insert(thread);
+        }
+    } else if (thread->getPriority() >= 50) {    // shihtl> L2 ReadyQueue
+        levelInsert = 2;
+        L2ReadyQueue->Insert(thread);
+    } else {    // shihtl> L3 ReadyQueue
+        levelInsert = 3;
+        L3ReadyQueue->Append(thread);
+    }
+
+    // shihtl> 2.3.(a)
+    DEBUG(dbgMLFQ, "[InsertToQueue] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thread->getID() << "] is inserted into queue L[" << levelInsert << "]");
+    //<TODO> Done 大概啦
     // readyList->Append(thread);
 }
 
@@ -95,9 +142,39 @@ Thread* Scheduler::FindNextToRun() {
         return readyList->RemoveFront();
     }*/
 
-    //<TODO>
+    //<TODO> Done
     // a.k.a. Find Next (Thread in ReadyQueue) to Run
-    //<TODO>
+    Thread* NextThread = NULL;
+    // shihtl> 先找 L1
+    if (!L1ReadyQueue->IsEmpty()) {
+        NextThread = L1ReadyQueue->Front();
+        L1ReadyQueue->RemoveFront();
+        schedulerType = SJF;
+
+        // shihtl> 2.3.(b)
+        DEBUG(dbgMLFQ, "[RemoveFromQueue] Tick [" << kernel->stats->totalTicks << "]: Thread [" << NextThread->getID() << "] is removed from queue L[1]");
+    }
+    // shihtl> 再找 L2
+    else if (!L2ReadyQueue->IsEmpty()) {
+        NextThread = L2ReadyQueue->Front();
+        L2ReadyQueue->RemoveFront();
+        schedulerType = Priority;    // shihtl> 雖然好像說他是用 Priority 好像哪裡怪怪的，但就這樣吧
+
+        // shihtl> 2.3.(b)
+        DEBUG(dbgMLFQ, "[RemoveFromQueue] Tick [" << kernel->stats->totalTicks << "]: Thread [" << NextThread->getID() << "] is removed from queue L[2]");
+    }
+    // shihtl> 最後是 L3
+    else if (!L3ReadyQueue->IsEmpty()) {
+        NextThread = L3ReadyQueue->Front();
+        L3ReadyQueue->RemoveFront();
+        schedulerType = RR;
+
+        // shihtl> 2.3.(b)
+        DEBUG(dbgMLFQ, "[RemoveFromQueue] Tick [" << kernel->stats->totalTicks << "]: Thread [" << NextThread->getID() << "] is removed from queue L[3]");
+    }
+
+    return NextThread;
+    //<TODO> Done
 }
 
 //----------------------------------------------------------------------
@@ -108,6 +185,7 @@ Thread* Scheduler::FindNextToRun() {
 //
 //      Note: we assume the state of the previously running thread has
 //	already been changed from running to blocked or ready (depending).
+// shihtl> 這邊 Note 重要!! 已經預設在跑新的 thread 時，舊的 thread 已經被撈到 ready 或是 blocked
 // Side effect:
 //	The global variable kernel->currentThread becomes nextThread.
 //
@@ -124,6 +202,8 @@ void Scheduler::Run(Thread* nextThread, bool finishing) {
 
     ASSERT(kernel->interrupt->getLevel() == IntOff);
 
+    // // shihtl> 這裡有改，新增判斷有沒有運行完畢
+    // if (finishing || (oldThread->getRemainingBurstTime() <= 0)) {    // mark that we need to delete current thread
     if (finishing) {    // mark that we need to delete current thread
         ASSERT(toBeDestroyed == NULL);
         toBeDestroyed = oldThread;
@@ -160,6 +240,11 @@ void Scheduler::Run(Thread* nextThread, bool finishing) {
 
     DEBUG(dbgThread, "Now in thread: " << kernel->currentThread->getID());
 
+    // // shihtl> 2.3.(e)
+    // DEBUG(dbgMLFQ, "[ContextSwitch] Tick [" << kernel->stats->totalTicks << "]: Thread [" << nextThread->getID() << "] is now selected for execution, thread [" << oldThread->getID()
+    //                                         << "] is replaced, and it has executed [" << oldThread->getRunTime() << "] ticks");
+
+    // shihtl> 把舊的那個跑完的 thread 嘎了
     CheckToBeDestroyed();    // check if thread we were running
                              // before this one has finished
                              // and needs to be cleaned up
@@ -201,11 +286,13 @@ void Scheduler::Print() {
     L3ReadyQueue->Apply(ThreadPrint);
 }
 
-// <TODO>
+// <TODO> Done
 
 // Function 1. Function definition of sorting rule of L1 ReadyQueue
+// shihtl> 最上面不是已經有了嗎
 
 // Function 2. Function definition of sorting rule of L2 ReadyQueue
+// shihtl> 最上面不是已經有了嗎
 
 // Function 3. Scheduler::UpdatePriority()
 // Hint:
@@ -213,7 +300,77 @@ void Scheduler::Print() {
 // 2. Update WaitTime and priority in Aging situations
 // 3. After aging, Thread may insert to different ReadyQueue
 
+// shihtl> !!!??? 根據 Alarm::CallBack() 猜測每 100 ticks 執行一次
 void Scheduler::UpdatePriority() {
+
+    // shihtl> L1 就算 Priority 爆表也不會影響到 threads 執行的順序，所以可以不用管他
+    // shihtl> 所以從 L2 開始更新 Priority
+    ListIterator<Thread*> LIterator(L2ReadyQueue);
+    while (!LIterator.IsDone()) {
+        Thread* thisThread = LIterator.Item();
+        thisThread->setWaitTime(thisThread->getWaitTime() + 100);
+
+        // shihtl> aging
+        if (thisThread->getWaitTime() >= 400) {
+            // shihtl> 2.3.(c)
+            DEBUG(dbgMLFQ, "[UpdatePriority] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thisThread->getID() << "] changes its priority from[" << thisThread->getPriority() << "] to["
+                                                    << thisThread->getPriority() + 10 << "]");
+            thisThread->setPriority(thisThread->getPriority() + 10);
+            thisThread->setWaitTime(0);
+        }
+
+        // shihtl> move to higher priority ready queue if possible
+        // shihtl> 這一 part 跟 Scheduler::ReadyToRun() 有 87% 像
+        if (thisThread->getPriority() >= 100) {    // shihtl> enter L1 ReadyQueue
+            // thisThread->setWaitTime(0); // shihtl> 可以不清，因為會進到這裡一定是 aging 之後；另外一個原因是 L1 的 waiting time 不重要
+            if (thisThread->getRemainingBurstTime() < kernel->currentThread->getRemainingBurstTime()) {    // shihtl> preemption occur
+                // kernel->currentThread->setStatus(READY);
+                // L1ReadyQueue->Insert(kernel->currentThread);
+                // Run(thread, false);    // shihtl > 搶到了開始跑，但還沒跑完
+                kernel->currentThread->Yield();    // shihtl> 後來發現有 Yeild 可以用
+            } else {                               // shihtl> 沒搶到
+                // shihtl> 2.3.(a)
+                DEBUG(dbgMLFQ, "[InsertToQueue] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thisThread->getID() << "] is inserted into queue L[1]");
+                L1ReadyQueue->Insert(thisThread);
+
+                // shihtl> 2.3.(b)
+                DEBUG(dbgMLFQ, "[RemoveFromQueue] Tick [" << kernel->stats->totalTicks << "]: Thread [" << thisThread->getID() << "] is removed from queue L[2]");
+                L2ReadyQueue->Remove(thisThread);    // shihtl> 和 Scheduler::ReadyToRun() 不一樣的是，要記得把它拿掉
+            }
+        }
+
+        LIterator.Next();
+    }
+
+    // shihtl> 換處理 L3 的部分
+    LIterator = ListIterator<Thread*>(L3ReadyQueue);
+    while (!LIterator.IsDone()) {
+        Thread* thisThread = LIterator.Item();
+        thisThread->setWaitTime(thisThread->getWaitTime() + 100);
+
+        // shihtl> aging
+        if (thisThread->getWaitTime() >= 400) {
+            // shihtl> 2.3.(c)
+            DEBUG(dbgMLFQ, "[UpdatePriority] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thisThread->getID() << "] changes its priority from[" << thisThread->getPriority() << "] to ["
+                                                    << thisThread->getPriority() + 10 << "]");
+            thisThread->setPriority(thisThread->getPriority() + 10);
+            thisThread->setWaitTime(0);
+        }
+
+        // shihtl> move to higher priority ready queue if possible
+        // shihtl> 這一 part 跟 Scheduler::ReadyToRun() 有 87% 像
+        if (thisThread->getPriority() >= 50) {    // shihtl> enter L2 ReadyQueue
+            // shihtl> 2.3.(a)
+            DEBUG(dbgMLFQ, "[InsertToQueue] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thisThread->getID() << "] is inserted into queue L[2]");
+            L2ReadyQueue->Insert(thisThread);
+
+            // shihtl> 2.3.(b)
+            DEBUG(dbgMLFQ, "[RemoveFromQueue] Tick [" << kernel->stats->totalTicks << "]: Thread [" << thisThread->getID() << "] is removed from queue L[3]");
+            L3ReadyQueue->Remove(thisThread);    // shihtl> 和 Scheduler::ReadyToRun() 不一樣的是，要記得把它拿掉
+        }
+
+        LIterator.Next();
+    }
 }
 
-// <TODO>
+// <TODO> Done

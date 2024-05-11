@@ -17,6 +17,7 @@
 // the data structures and operations needed to keep track of which
 // thread is running, and which threads are ready but not running.
 
+// shihtl> 現在是哪種模式蠻重要的，主要是要判斷 RR
 enum SchedulerType {
     RR,    // Round Robin
     SJF,
@@ -38,6 +39,11 @@ class Scheduler {
                                   // running needs to be deleted
     void Print();                 // Print contents of ready list
 
+    // shihtl> 為了讓 alarm.cc 知道現在是不是 RR 特別寫的，不確定有沒有其他地方其實可以寫
+    SchedulerType getSchedulerType() {
+        return schedulerType;
+    };
+
     //<REPORT>
     void UpdatePriority();
     //<REPORT>
@@ -50,6 +56,7 @@ class Scheduler {
                               // by the next thread that runs
 
     //<REPORT>
+    // shihtl> 啊他們就三層不同策略的 queue 啊，有需要寫啥嗎
     SortedList<Thread*>* L1ReadyQueue;
     SortedList<Thread*>* L2ReadyQueue;
     List<Thread*>* L3ReadyQueue;

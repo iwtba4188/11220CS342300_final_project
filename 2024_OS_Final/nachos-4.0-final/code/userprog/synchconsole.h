@@ -42,6 +42,7 @@ class SynchConsoleOutput : public CallBackObj {
 
     void PutChar(char ch);    // Write a character, waiting if necessary
     //<REPORT>
+    // shihtl> 底層調用 `sprintf` 把 int 變成 char *，然後讓輸出 interrupt 去排隊輸出到 console
     void PutInt(int n);
     //<REPORT>
 

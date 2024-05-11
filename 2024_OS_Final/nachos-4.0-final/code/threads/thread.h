@@ -95,14 +95,15 @@ class Thread {
 
     void Fork(VoidFunctionPtr func, void* arg);
     // Make thread run (*func)(arg)
-    void Yield();    // Relinquish the CPU if any
-                     // other thread is runnable
+    void Yield();                  // Relinquish the CPU if any
+                                   // other thread is runnable
     void Sleep(bool finishing);    // Put the thread to sleep and
                                    // relinquish the processor
-    void Begin();     // Startup code for the thread
-    void Finish();    // The thread is done executing
+    void Begin();                  // Startup code for the thread
+    void Finish();                 // The thread is done executing
 
     void CheckOverflow();    // Check if thread stack has overflowed
+    // shihtl> 為什麼感覺這個 status 在這份作業裡面沒啥用
     void setStatus(ThreadStatus st) {
         status = st;
     }
@@ -121,32 +122,72 @@ class Thread {
         cout << name;
     }
     void SelfTest();    // test whether thread impl is working
-                        //<TODO>
-                        // Set & Get the value in Class Thread
-                        // 1. get ID
-                        // 2. set/get Priority
-                        // 3. set/get WaitTime
-                        // 4. set/get RemainingBurstTime
-                        // 5. set/get RunTime
-                        // 6. set/get RRTime
-                        //<TODO>
+
+    //<TODO> Done
+    // Set & Get the value in Class Thread
+    // 1. get ID
+    int getID() {
+        return ID;
+    };
+    // 2. set/get Priority
+    void setPriority(int value) {
+        Priority = value;
+    };
+    int getPriority() {
+        return Priority;
+    };
+    // 3. set/get WaitTime
+    void setWaitTime(int value) {
+        WaitTime = value;
+    };
+    int getWaitTime() {
+        return WaitTime;
+    };
+    // 4. set/get RemainingBurstTime
+    void setRemainingBurstTime(int value) {
+        RemainingBurstTime = value;
+    };
+    int getRemainingBurstTime() {
+        return RemainingBurstTime;
+    };
+    // 5. set/get RunTime
+    void setRunTime(int value) {
+        RunTime = value;
+    };
+    int getRunTime() {
+        return RunTime;
+    };
+    // 6. set/get RRTime
+    void setRRTime(int value) {
+        RRTime = value;
+    };
+    int getRRTime() {
+        return RRTime;
+    };
+    //<TODO> Done
 
   private:
     // some of the private data for this class is listed above
 
-    int* stack;    // Bottom of the stack
-                   // NULL if this is the main thread
-                   // (If NULL, don't deallocate stack)
+    int* stack;             // Bottom of the stack
+                            // NULL if this is the main thread
+                            // (If NULL, don't deallocate stack)
     ThreadStatus status;    // ready, running or blocked
     char* name;
-    //<REPORT>
+    //<REPORT> Done
+    // shihtl> 該 thread 的 ID
     int ID;
+    // shihtl> 該 thread 的優先度值
     int Priority;
+    // shihtl> 該 thread 已經等待多久
     int WaitTime;
+    // shihtl> 該 thread 剩下多少 burst_time
     int RemainingBurstTime;
+    // shihtl> 該 thread 跑了多久了
     int RunTime;
+    // shihtl> 該 thread 在 RR 模式中跑了多久了，for L3 queue
     int RRTime;
-    //<REPORT>
+    //<REPORT> Done
     void StackAllocate(VoidFunctionPtr func, void* arg);
     // Allocate a stack for thread.
     // Used internally by Fork()

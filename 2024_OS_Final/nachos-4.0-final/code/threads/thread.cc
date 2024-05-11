@@ -89,6 +89,7 @@ Thread::~Thread() {
 //	"arg" is a single argument to be passed to the procedure.
 //----------------------------------------------------------------------
 
+// shihtl> fork 出來之後把他塞到 ready state
 void Thread::Fork(VoidFunctionPtr func, void* arg) {
     Interrupt* interrupt = kernel->interrupt;
     Scheduler* scheduler = kernel->scheduler;
@@ -199,12 +200,17 @@ void Thread::Yield() {
 
     DEBUG(dbgThread, "Yielding thread: " << name << ", ID: " << ID);
 
-    //<TODO>
+    //<TODO> Done 應該吧
     // 1. Put current_thread in running state to ready state
     // 2. Then, find next thread from ready state to push on running state
     // 3. After resetting some value of current_thread, then context switch
-    kernel->scheduler->Run(nextThread, finishing);
-    //<TODO>
+    kernel->scheduler->ReadyToRun(kernel->currentThread);
+    nextThread = kernel->scheduler->FindNextToRun();
+    // shihtl> 2.3.(e)
+    DEBUG(dbgMLFQ, "[ContextSwitch] Tick [" << kernel->stats->totalTicks << "]: Thread [" << nextThread->getID() << "] is now selected for execution, thread [" << kernel->currentThread->getID()
+                                            << "] is replaced, and it has executed [" << kernel->currentThread->getRunTime() << "] ticks");
+    kernel->scheduler->Run(nextThread, false);
+    //<TODO> Done 應該吧
 
     (void)kernel->interrupt->SetLevel(oldLevel);
 }
@@ -246,6 +252,19 @@ void Thread::Sleep(bool finishing) {
     // , and determine finishing on Scheduler::Run(nextThread, finishing), not here.
     // 1. Update RemainingBurstTime
     // 2. Reset some value of current_thread, then context switch
+    // shihtl> 2.3.(d)
+    DEBUG(dbgMLFQ, "[UpdateRemainingBurstTime] Tick [" << kernel->stats->totalTicks << "]: Thread [" << kernel->currentThread->getID() << "] update remaining burst time, from: ["
+                                                       << kernel->currentThread->getRemainingBurstTime() << "] - [" << kernel->currentThread->getRunTime() << "], to ["
+                                                       << kernel->currentThread->getRemainingBurstTime() - kernel->currentThread->getRunTime() << "]");
+
+    kernel->currentThread->setRemainingBurstTime(kernel->currentThread->getRemainingBurstTime() - kernel->currentThread->getRunTime());
+    kernel->currentThread->setRunTime(0);
+    kernel->currentThread->setRRTime(0);
+    kernel->currentThread->setStatus(READY);
+
+    // shihtl> 2.3.(e)
+    DEBUG(dbgMLFQ, "[ContextSwitch] Tick [" << kernel->stats->totalTicks << "]: Thread [" << nextThread->getID() << "] is now selected for execution, thread [" << kernel->currentThread->getID()
+                                            << "] is replaced, and it has executed [" << kernel->currentThread->getRunTime() << "] ticks");
     kernel->scheduler->Run(nextThread, finishing);
     //<TODO>
 }
