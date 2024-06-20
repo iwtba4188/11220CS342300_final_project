@@ -50,26 +50,29 @@ void Alarm::CallBack() {
     MachineStatus status = interrupt->getStatus();
 
 
-    //<TODO> Done maybe
+    if (status != IdleMode) {
+        //<TODO> Done maybe
 
+        // shihtl> !!!??? 這裡的意思是每 100 ticks 才會執行一次 Alarm::CallBack() 嗎？
+        // In each 100 ticks,
 
-    // shihtl> !!!??? 這裡的意思是每 100 ticks 才會執行一次 Alarm::CallBack() 嗎？
-    // In each 100 ticks,
+        // DEBUG('z', "^^^^^^^^^^ current ticks: " << kernel->stats->totalTicks);
 
-    DEBUG('z', "^^^^^^^^^^ current ticks: " << kernel->stats->totalTicks);
+        // 1. Update Priority
+        kernel->scheduler->UpdatePriority();
 
-    // 1. Update Priority
-    kernel->scheduler->UpdatePriority();
+        // 2. Update RunTime & RRTime
+        // if (kernel->currentThread->getStatus() == RUNNING) {
+        kernel->currentThread->setRunTime(kernel->currentThread->getRunTime() + 100);
+        if (kernel->currentThread->getPriority() < 50) kernel->currentThread->setRRTime(kernel->currentThread->getRRTime() + 100);
 
-    // 2. Update RunTime & RRTime
-    kernel->currentThread->setRunTime(kernel->currentThread->getRunTime() + 100);
-    if (kernel->scheduler->getSchedulerType() == RR) kernel->currentThread->setRRTime(kernel->currentThread->getRRTime() + 100);
+        // 3. Check Round Robin
+        // if (kernel->scheduler->getSchedulerType() == RR && kernel->currentThread->getRRTime() > 200) kernel->currentThread->Yield();
+        if (kernel->currentThread->getPriority() < 50 && kernel->currentThread->getRRTime() >= 200) interrupt->YieldOnReturn();
+        // }
 
-    // 3. Check Round Robin
-    if (kernel->scheduler->getSchedulerType() == RR && kernel->currentThread->getRRTime() >= 200) kernel->currentThread->Yield();
-
-    //<TODO> Done maybe
-
+        //<TODO> Done maybe
+    }
     //    if (status == IdleMode) {    // is it time to quit?
     //        if (!interrupt->AnyFutureInterrupts()) {
     //        timer->Disable(); // turn off the timer

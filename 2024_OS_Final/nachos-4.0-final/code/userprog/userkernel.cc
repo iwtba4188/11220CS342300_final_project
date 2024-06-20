@@ -41,7 +41,7 @@ UserProgKernel::UserProgKernel(int argc, char** argv) : ThreadedKernel(argc, arg
             threadRemainingBurstTime[execfileNum] = atoi(argv[++i]);
 
             // shihtl> for debug
-            DEBUG(dbgMLFQ, "########" << execfile[execfileNum] << "  " << threadPriority[execfileNum] << "  " << threadRemainingBurstTime[execfileNum]);
+            // DEBUG(dbgMLFQ, "########" << execfile[execfileNum] << "  " << threadPriority[execfileNum] << "  " << threadRemainingBurstTime[execfileNum]);
         }
         //<TODO> Done
         else if (strcmp(argv[i], "-u") == 0) {
@@ -174,8 +174,10 @@ void ForkExecute(Thread* t) {
     // Hint: This function would not be called until Thread t is on running state.
 
     // DEBUG(dbgMLFQ, "$$$$$$$$$$$$$ 有運行在 thread " << t->getID());
-    t->space->Load(t->getName());
-    t->space->Execute(t->getName());
+    if (t->getStatus() == RUNNING) {
+        t->space->Load(t->getName());
+        t->space->Execute(t->getName());
+    }
     //<TODO>
 }
 
