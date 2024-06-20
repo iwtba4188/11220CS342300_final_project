@@ -115,7 +115,8 @@ void Scheduler::ReadyToRun(Thread* thread) {
     // shihtl> 2.3.(a)
     DEBUG(dbgMLFQ, "[InsertToQueue] Tick[" << kernel->stats->totalTicks << "]: Thread[" << thread->getID() << "] is inserted into queue L[" << levelInsert << "]");
 
-    if (levelInsert == 1 &&
+    // shihtl> 不要瘋到連一開始的都搶
+    if (levelInsert == 1 && kernel->currentThread->getID() != 0 &&
         (thread->getRemainingBurstTime() < kernel->currentThread->getRemainingBurstTime() || thread->getPriority() > kernel->currentThread->getPriority())) {    // shihtl> preemption occur
         // kernel->currentThread->setStatus(READY);
         // L1ReadyQueue->Insert(kernel->currentThread);
